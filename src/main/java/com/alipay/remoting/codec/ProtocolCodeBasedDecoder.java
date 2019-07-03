@@ -16,16 +16,15 @@
  */
 package com.alipay.remoting.codec;
 
-import java.util.List;
-
 import com.alipay.remoting.Connection;
 import com.alipay.remoting.Protocol;
 import com.alipay.remoting.ProtocolCode;
 import com.alipay.remoting.ProtocolManager;
 import com.alipay.remoting.exception.CodecException;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+
+import java.util.List;
 
 /**
  * Protocol code based decoder, the main decoder for a certain protocol, which is lead by one or multi bytes (magic code).
@@ -88,9 +87,18 @@ public class ProtocolCodeBasedDecoder extends AbstractBatchDecoder {
                     ctx.channel().attr(Connection.VERSION).set(protocolVersion);
                 }
             }
+            /**
+             * 因为蚂蚁前后有2版协议，所以需要一个ProtocolManager来对协议进行管理
+             * 2版协议在 RpcProtocolManager 里进行注册
+             * RpcServer/RpcClient 启动时, 会执行 doInit 方法
+             * 里面调用协议的初始化代码
+             */
             Protocol protocol = ProtocolManager.getProtocol(protocolCode);
             if (null != protocol) {
                 in.resetReaderIndex();
+                /**
+                 * 在协议里面直接维护了编码器和解码器，有点意思
+                 */
                 protocol.getDecoder().decode(ctx, in, out);
             } else {
                 throw new CodecException("Unknown protocol code: [" + protocolCode

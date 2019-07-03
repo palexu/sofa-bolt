@@ -16,21 +16,16 @@
  */
 package com.alipay.remoting;
 
-import java.net.InetSocketAddress;
-
-import com.alipay.remoting.config.BoltOption;
-import com.alipay.remoting.config.BoltOptions;
-import com.alipay.remoting.config.ConfigManager;
-import com.alipay.remoting.config.Configurable;
-import com.alipay.remoting.config.ConfigurableInstance;
+import com.alipay.remoting.config.*;
 import com.alipay.remoting.config.configs.ConfigContainer;
 import com.alipay.remoting.config.configs.ConfigItem;
+import com.alipay.remoting.config.configs.ConfigType;
 import com.alipay.remoting.config.configs.DefaultConfigContainer;
 import com.alipay.remoting.config.switches.GlobalSwitch;
+import com.alipay.remoting.log.BoltLoggerFactory;
 import org.slf4j.Logger;
 
-import com.alipay.remoting.config.configs.ConfigType;
-import com.alipay.remoting.log.BoltLoggerFactory;
+import java.net.InetSocketAddress;
 
 /**
  * Server template for remoting.
@@ -40,6 +35,11 @@ import com.alipay.remoting.log.BoltLoggerFactory;
  */
 public abstract class AbstractRemotingServer extends AbstractLifeCycle implements RemotingServer,
                                                                       ConfigurableInstance {
+    /*
+    AbstractLifeCycle 是什么鬼，为什么 RpcServer 要继承这个玩意
+    > 额，似乎只是提供了startup、shutdown等接口， 没啥实际用处。。
+    就是让需要启动的一些组件， 拥有相同的启动、关闭方法。
+     */
 
     private static final Logger   logger = BoltLoggerFactory.getLogger("CommonDefault");
 

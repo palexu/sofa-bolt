@@ -16,11 +16,14 @@
  */
 package com.alipay.remoting;
 
-import java.util.concurrent.TimeUnit;
-
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
 
+import java.util.concurrent.TimeUnit;
+
+/*
+主要就是为了拿一个单利的HashedWheelTimer
+ */
 /**
  * A singleton holder of the timer for timeout.
  * 
