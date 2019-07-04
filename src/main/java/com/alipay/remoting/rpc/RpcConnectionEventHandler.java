@@ -45,6 +45,9 @@ public class RpcConnectionEventHandler extends ConnectionEventHandler {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         Connection conn = ctx.channel().attr(Connection.CONNECTION).get();
         if (conn != null) {
+            /*
+            todo 为什么要移除？
+             */
             this.getConnectionManager().remove(conn);
         }
         super.channelInactive(ctx);

@@ -16,16 +16,19 @@
  */
 package com.alipay.remoting.rpc;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.alipay.remoting.config.ConfigurableInstance;
 import com.alipay.remoting.connection.DefaultConnectionFactory;
 import com.alipay.remoting.rpc.protocol.UserProcessor;
+
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Default RPC connection factory impl.
  *
  * @author chengyi (mark.lx@antfin.com) 2018-06-20 15:32
+ */
+/*
+给rpc-client用的
  */
 public class RpcConnectionFactory extends DefaultConnectionFactory {
 

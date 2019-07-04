@@ -16,40 +16,60 @@
  */
 package com.alipay.remoting;
 
-import java.net.SocketAddress;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
-import org.slf4j.Logger;
-
 import com.alipay.remoting.config.switches.GlobalSwitch;
 import com.alipay.remoting.log.BoltLoggerFactory;
 import com.alipay.remoting.util.RemotingUtil;
 import com.alipay.remoting.util.StringUtils;
-
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.util.Attribute;
+import org.slf4j.Logger;
+
+import java.net.SocketAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Log the channel status event.
- * 
+ * notes
+ *  Connection 事件处理器:
+ *  ## 处理两类事件:
+ *  1. Netty 定义的事件：
+ *      例如 connect，channelActive 等
+ *      在这些事件里，会根据规则触发 Reconnector 断线重连机制
+ *  2. SOFABolt 定义的事件:
+ *      1. {@link  ConnectionEventType#CONNECT}
+ *      2. {@link  ConnectionEventType#CLOSE}
+ *      3. {@link  ConnectionEventType#EXCEPTION}
+ *      最终事件的发生，会触发 ConnectionEventListener 对应的逻辑
+ *  ## 从功能上说：
+ *  1. 触发 ConnectionEventListener
+ *  2. 负责触发重连
+ *
+ *  @see [SOFABolt 源码分析13 - Connection 事件处理机制的设计](https://www.jianshu.com/p/d17b60418c54)
+ *
  * @author jiangping
  * @version $Id: ConnectionEventHandler.java, v 0.1 Oct 10, 2016 2:07:24 PM tao Exp $
  */
 @Sharable
 public class ConnectionEventHandler extends ChannelDuplexHandler {
     private static final Logger     logger = BoltLoggerFactory.getLogger("ConnectionEvent");
-
+    /**
+     * notes 这个家伙维护在这个ChannelHandler里似乎没什么用, 就是单纯的维护了一个指针
+     *  倒是 {@link com.alipay.remoting.rpc.RpcConnectionEventHandler}（ConnectionEventHandler的子类）里需要用到manger去加入和删除连接
+     */
     private ConnectionManager       connectionManager;
 
     private ConnectionEventListener eventListener;
 
+    /**
+     * notes 就一个线程池
+     */
     private ConnectionEventExecutor eventExecutor;
 
     private Reconnector             reconnectManager;
@@ -147,6 +167,9 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
                     reconnectManager.reconnect(conn.getUrl());
                 }
             }
+             /*
+                        todo 这是干啥的？
+                         */
             // trigger close connection event
             onEvent((Connection) attr.get(), remoteAddress, ConnectionEventType.CLOSE);
         }
@@ -160,11 +183,12 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
                     Channel channel = ctx.channel();
                     if (null != channel) {
                         Connection connection = channel.attr(Connection.CONNECTION).get();
-                        this.onEvent(connection, connection.getUrl().getOriginUrl(),
-                            ConnectionEventType.CONNECT);
+                        /*
+                        todo 这是干啥的？
+                         */
+                        this.onEvent(connection, connection.getUrl().getOriginUrl(), ConnectionEventType.CONNECT);
                     } else {
-                        logger
-                            .warn("channel null when handle user triggered event in ConnectionEventHandler!");
+                        logger.warn("channel null when handle user triggered event in ConnectionEventHandler!");
                     }
                     break;
                 default:
@@ -192,6 +216,15 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
             this.eventExecutor.onEvent(new Runnable() {
                 @Override
                 public void run() {
+                    /*
+                    notes
+                     这里看起来其实不需要用 Clazz.this.eventLister 这个用法， 因为可以直接识别到eventLister是外部类的成员变量。
+                     可以简写成:
+                        ConnectionEventHandler.this.eventListener.onEvent(type, remoteAddress, conn);
+                        ->
+                        eventListener.onEvent(type, remoteAddress, conn);
+                     see [Java里ClassName.this和this有什么不一样](https://segmentfault.com/q/1010000000121937)
+                     */
                     ConnectionEventHandler.this.eventListener.onEvent(type, remoteAddress, conn);
                 }
             });
@@ -200,7 +233,7 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
 
     /**
      * Getter method for property <tt>listener</tt>.
-     * 
+     *
      * @return property value of listener
      */
     public ConnectionEventListener getConnectionEventListener() {
@@ -209,7 +242,7 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
 
     /**
      * Setter method for property <tt>listener</tt>.
-     * 
+     *
      * @param listener value to be assigned to property listener
      */
     public void setConnectionEventListener(ConnectionEventListener listener) {
@@ -223,7 +256,7 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
 
     /**
      * Getter method for property <tt>connectionManager</tt>.
-     * 
+     *
      * @return property value of connectionManager
      */
     public ConnectionManager getConnectionManager() {
@@ -232,7 +265,7 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
 
     /**
      * Setter method for property <tt>connectionManager</tt>.
-     * 
+     *
      * @param connectionManager value to be assigned to property connectionManager
      */
     public void setConnectionManager(ConnectionManager connectionManager) {
@@ -254,7 +287,7 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
 
     /**
      * Dispatch connection event.
-     * 
+     *
      * @author jiangping
      * @version $Id: ConnectionEventExecutor.java, v 0.1 Mar 4, 2016 9:20:15 PM tao Exp $
      */
@@ -266,7 +299,7 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
 
         /**
          * Process event.
-         * 
+         *
          * @param runnable Runnable
          */
         public void onEvent(Runnable runnable) {

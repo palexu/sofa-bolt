@@ -16,42 +16,22 @@
  */
 package com.alipay.remoting.rpc;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import com.alipay.remoting.AbstractBoltClient;
-import com.alipay.remoting.ConnectionSelectStrategy;
-import com.alipay.remoting.DefaultClientConnectionManager;
-import com.alipay.remoting.LifeCycleException;
-import com.alipay.remoting.Reconnector;
+import com.alipay.remoting.*;
 import com.alipay.remoting.config.BoltGenericOption;
-import org.slf4j.Logger;
-
-import com.alipay.remoting.Connection;
-import com.alipay.remoting.ConnectionEventHandler;
-import com.alipay.remoting.ConnectionEventListener;
-import com.alipay.remoting.ConnectionEventProcessor;
-import com.alipay.remoting.ConnectionEventType;
-import com.alipay.remoting.ConnectionMonitorStrategy;
-import com.alipay.remoting.DefaultConnectionManager;
-import com.alipay.remoting.DefaultConnectionMonitor;
-import com.alipay.remoting.InvokeCallback;
-import com.alipay.remoting.InvokeContext;
-import com.alipay.remoting.RandomSelectStrategy;
-import com.alipay.remoting.ReconnectManager;
-import com.alipay.remoting.RemotingAddressParser;
-import com.alipay.remoting.ScheduledDisconnectStrategy;
-import com.alipay.remoting.Url;
 import com.alipay.remoting.config.switches.GlobalSwitch;
 import com.alipay.remoting.exception.RemotingException;
 import com.alipay.remoting.log.BoltLoggerFactory;
 import com.alipay.remoting.rpc.protocol.UserProcessor;
 import com.alipay.remoting.rpc.protocol.UserProcessorRegisterHelper;
+import org.slf4j.Logger;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Client for Rpc.
- * 
+ *
  * @author jiangping
  * @version $Id: RpcClient.java, v 0.1 2015-9-23 PM4:03:28 tao Exp $
  */
@@ -124,13 +104,52 @@ public class RpcClient extends AbstractBoltClient {
         if (connectionSelectStrategy == null) {
             connectionSelectStrategy = new RandomSelectStrategy(switches());
         }
+
+        /*
+       notes
+        此时， userProcessors 应当已经配置好了用户的处理器。
+        当然没有配置也没关系，后面也可以注册进去。因为提供了 register方法
+        一共有以下handler:
+        需要进行配置才可以使用的：
+        1.RpcHandler 内部包装了所有的userProcessors
+            为什么要怎么做呢？可以参考 see ['Netty 入门与实战：仿写微信 IM 即时通讯系统'里的骚操作]https://www.jianshu.com/p/bb0805d65388
+            > 缩短事件传播路径—— 放 Map 里，在第一个 handler 里根据指令来找具体 handler。
+            > RpcHandler就是利用 UserProcessor 感兴趣的时间作为map的key， 来缩短事件传播路径。
+        2.connectionEventHandler
+        无需配置即可使用的
+        1.编解码器handler
+        2.heartbeatHandler
+        =================
+        see com.alipay.remoting.connection.AbstractConnectionFactory.init
+        ```
+        bootstrap.handler(new ChannelInitializer<SocketChannel>() {
+            @Override
+            protected void initChannel(SocketChannel channel) {
+                ChannelPipeline pipeline = channel.pipeline();
+                pipeline.addLast("decoder", codec.newDecoder());
+                pipeline.addLast("encoder", codec.newEncoder());
+                //
+                boolean idleSwitch = ConfigManager.tcp_idle_switch();
+                if (idleSwitch) {
+                    pipeline.addLast("idleStateHandler",
+                        new IdleStateHandler(ConfigManager.tcp_idle(), ConfigManager.tcp_idle(), 0,
+                            TimeUnit.MILLISECONDS));
+                    pipeline.addLast("heartbeatHandler", heartbeatHandler);
+                }
+                //
+                pipeline.addLast("connectionEventHandler", connectionEventHandler);
+                pipeline.addLast("handler", handler);
+            }
+        });
+        ```
+         */
         this.connectionManager = new DefaultClientConnectionManager(connectionSelectStrategy,
             new RpcConnectionFactory(userProcessors, this), connectionEventHandler,
             connectionEventListener, switches());
         this.connectionManager.setAddressParser(this.addressParser);
         this.connectionManager.startup();
-        this.rpcRemoting = new RpcClientRemoting(new RpcCommandFactory(), this.addressParser,
-            this.connectionManager);
+
+        this.rpcRemoting = new RpcClientRemoting(new RpcCommandFactory(), this.addressParser, this.connectionManager);
         this.taskScanner.add(this.connectionManager);
         this.taskScanner.startup();
 
@@ -395,7 +414,7 @@ public class RpcClient extends AbstractBoltClient {
 
     /**
      * Close all connections of a address
-     * 
+     *
      * @param addr
      */
     public void closeConnection(String addr) {
