@@ -36,9 +36,10 @@ import java.net.InetSocketAddress;
 public abstract class AbstractRemotingServer extends AbstractLifeCycle implements RemotingServer,
                                                                       ConfigurableInstance {
     /*
-    AbstractLifeCycle 是什么鬼，为什么 RpcServer 要继承这个玩意
-    > 额，似乎只是提供了startup、shutdown等接口， 没啥实际用处。。
-    就是让需要启动的一些组件， 拥有相同的启动、关闭方法。
+    notes
+        AbstractLifeCycle 是什么鬼，为什么 RpcServer 要继承这个玩意
+        > 额，似乎只是提供了startup、shutdown等接口， 没啥实际用处。。
+        就是让需要启动的一些组件， 拥有相同的启动、关闭方法。
      */
 
     private static final Logger   logger = BoltLoggerFactory.getLogger("CommonDefault");

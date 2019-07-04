@@ -42,6 +42,11 @@ public class NamedThreadFactory implements ThreadFactory {
     }
 
     public NamedThreadFactory(String preffix, boolean daemon) {
+        /*
+        notes 这个的作用是啥 System.getSecurityManagerr()
+            see https://www.jianshu.com/p/6938f409ad84
+            可以看到这篇文章里创建Thread时获取threadGroup的方式也是这个，怀疑这个代码是类似拷贝的。。。
+         */
         SecurityManager s = System.getSecurityManager();
         group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
         namePrefix = preffix + "-" + poolNumber.getAndIncrement() + "-thread-";

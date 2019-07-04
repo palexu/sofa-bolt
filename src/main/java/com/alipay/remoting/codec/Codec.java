@@ -26,10 +26,11 @@ import io.netty.channel.ChannelHandler;
 public interface Codec {
 
     /*
-    下面这两个负责了所有的编码解码工作
-    ProtocolCodeBasedDecoder
-    ProtocolCodeBasedEncoder
-    而Codec主要就是对这两个进行管理， 然后在 RpcServer / RpcClient 中pipeLine 使用时更加方便。
+    notes
+     下面这两个负责了所有的编码解码工作
+     ProtocolCodeBasedDecoder
+     ProtocolCodeBasedEncoder
+     而Codec主要就是对这两个进行管理， 然后在 RpcServer / RpcClient 中pipeLine 使用时更加方便。
      */
 
     /**

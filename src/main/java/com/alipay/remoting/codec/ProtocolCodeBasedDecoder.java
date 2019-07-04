@@ -87,17 +87,17 @@ public class ProtocolCodeBasedDecoder extends AbstractBatchDecoder {
                     ctx.channel().attr(Connection.VERSION).set(protocolVersion);
                 }
             }
-            /**
-             * 因为蚂蚁前后有2版协议，所以需要一个ProtocolManager来对协议进行管理
-             * 2版协议在 RpcProtocolManager 里进行注册
-             * RpcServer/RpcClient 启动时, 会执行 doInit 方法
-             * 里面调用协议的初始化代码
+            /*
+             * notes 因为蚂蚁前后有2版协议，所以需要一个ProtocolManager来对协议进行管理
+             *   2版协议在 RpcProtocolManager 里进行注册
+             *   RpcServer/RpcClient 启动时, 会执行 doInit 方法
+             *   里面调用协议的初始化代码
              */
             Protocol protocol = ProtocolManager.getProtocol(protocolCode);
             if (null != protocol) {
                 in.resetReaderIndex();
-                /**
-                 * 在协议里面直接维护了编码器和解码器，有点意思
+                /*
+                 * notes 在协议里面直接维护了编码器和解码器，有点意思
                  */
                 protocol.getDecoder().decode(ctx, in, out);
             } else {

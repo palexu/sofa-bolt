@@ -15,9 +15,6 @@
  */
 package com.alipay.remoting.codec;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
@@ -28,6 +25,9 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.DecoderException;
 import io.netty.util.internal.RecyclableArrayList;
 import io.netty.util.internal.StringUtil;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class mainly hack the {@link io.netty.handler.codec.ByteToMessageDecoder} to provide batch submission capability.
@@ -49,6 +49,8 @@ import io.netty.util.internal.StringUtil;
  * </pre>
  * You can check the method {@link AbstractBatchDecoder#channelRead(ChannelHandlerContext, Object)} ()}
  *   to know the detail modification.
+ *
+ *   todo 了解下 AbstractBatchDecoder 在 sofa里起到的性能优化作用
  */
 public abstract class AbstractBatchDecoder extends ChannelInboundHandlerAdapter {
     /**
