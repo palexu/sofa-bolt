@@ -33,6 +33,20 @@ import java.util.concurrent.*;
 /**
  * Abstract implementation of connection manager
  * notes channel管理器
+ *  创建channel的过程是异步的， 主要通过这个{@link ConnectionPoolCall}来进行。
+ *  # 建立多连接与连接预热
+ *      通常来说，点对点的直连通信，客户端和服务端，一个 IP 一个连接对象就够用了。不管是吞吐能力还是并发度，都能满足一般业务的通信需求。
+ *      而有一些场景，比如不是点对点直连通信，而是经过了 LVS VIP，或者 F5 设备的连接，此时，为了负载均衡和容错，会针对一个 URL 地址建立多个连接。
+ *      我们提供如下方式来建立多连接，即发起调用时传入的 URL 增加如下参数 127.0.0.1:12200?_CONNECTIONNUM=30&_CONNECTIONWARMUP=true，
+ *      表示针对这个 IP 地址，需要建立30个连接，同时需要预热连接。其中预热与不预热的区别是：
+ *      - 预热：即第一次调用（比如 Sync 同步调用），就建立30个连接
+ *      - 不预热：每一次调用，创建一个连接，直到创建满30个连接
+ *
+ * notes 管理器没有连接池么？难道每次都重新创建连接？
+ *  > 有的 {@link ConnectionPool}
+ *
+ * todo 什么时候第一次创建channel？第一次要发消息的时候？
+ *  > 是的，通过 {@link #create}
  *
  * @author xiaomin.cxm
  * @version $Id: DefaultConnectionManager.java, v 0.1 Mar 8, 2016 10:43:51 AM xiaomin.cxm Exp $
@@ -57,7 +71,7 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
 
     /**
      * connection pool initialize tasks
-     * todo 干啥的
+     * todo RunStateRecordedFutureTask 干啥的
      */
     protected ConcurrentHashMap<String, RunStateRecordedFutureTask<ConnectionPool>> connTasks;
 
@@ -562,13 +576,27 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
         int timesOfInterrupt = 0;
 
         for (int i = 0; (i < retry) && (pool == null); ++i) {
+
             initialTask = this.connTasks.get(poolKey);
+
+            //todo 这里是进行了双重检查？  为了线程安全？
+
+            //说明之前没有调用过这个地址
             if (null == initialTask) {
-                RunStateRecordedFutureTask<ConnectionPool> newTask = new RunStateRecordedFutureTask<ConnectionPool>(
-                    callable);
+                //那么尝试执行新建连接的任务
+                RunStateRecordedFutureTask<ConnectionPool> newTask = new RunStateRecordedFutureTask<ConnectionPool>(callable);
                 initialTask = this.connTasks.putIfAbsent(poolKey, newTask);
+
+                //说明之前没有提交过任务， 那么现在执行任务
                 if (null == initialTask) {
                     initialTask = newTask;
+                    /**
+                    notes 为什么这里没有提交到线程池， 而是直接 .run() 执行了？
+                     而且内部调用的 ConnectionFactory， 也是同步阻塞地执行连接操作。
+                     也就说说整个新建连接的过程全程都是同步阻塞的， 这是为啥呢？
+                     > emm，还是有异步创建连接的需求的，see {@link #doCreate}
+                       所以是为了在"同一个地方"进行"同步/异步"的控制，而这个地方， bolt把它定在 {@link #doCreate}
+                     */
                     initialTask.run();
                 }
             }
@@ -578,6 +606,7 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
                 if (null == pool) {
                     if (i + 1 < retry) {
                         timesOfResultNull++;
+                        //还有重试机会时，继续重试
                         continue;
                     }
                     this.connTasks.remove(poolKey);
@@ -591,10 +620,7 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
                     continue;// retry if interrupted
                 }
                 this.connTasks.remove(poolKey);
-                logger
-                    .warn(
-                        "Future task of poolKey {} interrupted {} times. InterruptedException thrown and stop retry.",
-                        poolKey, (timesOfInterrupt + 1), e);
+                logger.warn("Future task of poolKey {} interrupted {} times. InterruptedException thrown and stop retry.", poolKey, (timesOfInterrupt + 1), e);
                 throw e;
             } catch (ExecutionException e) {
                 // DO NOT retry if ExecutionException occurred
@@ -747,7 +773,7 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
      * @param url target url
      * @param pool connection pool
      * @param taskName task name
-     * @param syncCreateNumWhenNotWarmup you can specify this param to ensure at least desired number of connections available in sync way
+     * notes @param syncCreateNumWhenNotWarmup you can specify this param to ensure at least desired number of connections available in sync way
      * @throws RemotingException
      */
     private void doCreate(final Url url, final ConnectionPool pool, final String taskName,
@@ -761,17 +787,29 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
             logger.debug("actual num {}, expect num {}, task name {}", actualNum, expectNum,
                 taskName);
         }
+
+        /**
+         * notes 如果是预热，那么一次创建所有连接
+         *  see {@link DefaultConnectionManager}
+         */
         if (url.isConnWarmup()) {
             for (int i = actualNum; i < expectNum; ++i) {
                 Connection connection = create(url);
                 pool.add(connection);
             }
-        } else {
+        }
+
+        /**
+         * notes 否则一次创建一条， 直到达到上限
+         */
+        else {
             if (syncCreateNumWhenNotWarmup < 0 || syncCreateNumWhenNotWarmup > url.getConnNum()) {
                 throw new IllegalArgumentException(
                     "sync create number when not warmup should be [0," + url.getConnNum() + "]");
             }
+
             // create connection in sync way
+            // notes 第一步：同步地创建指定数量的线程. 目的是为了保证当调用完这个方法后，已经存在指定数量的可用连接。防止外部开始调用了， 结果无连接可用的尴尬局面😅。
             if (syncCreateNumWhenNotWarmup > 0) {
                 for (int i = 0; i < syncCreateNumWhenNotWarmup; ++i) {
                     Connection connection = create(url);
@@ -782,6 +820,7 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
                 }
             }
 
+            // notes 第二步：剩余的连接线程异步创建
             pool.markAsyncCreationStart();// mark the start of async
             try {
                 this.asyncCreateConnectionExecutor.execute(new Runnable() {

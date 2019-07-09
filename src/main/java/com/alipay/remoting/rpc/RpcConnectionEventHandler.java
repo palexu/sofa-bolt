@@ -46,7 +46,8 @@ public class RpcConnectionEventHandler extends ConnectionEventHandler {
         Connection conn = ctx.channel().attr(Connection.CONNECTION).get();
         if (conn != null) {
             /*
-            todo 为什么要移除？
+             为什么要移除？
+             废话， netty自己管理下的channel会释放掉，但是bolt管理下的connection没有释放啊。这里就是主动去释放罢了
              */
             this.getConnectionManager().remove(conn);
         }

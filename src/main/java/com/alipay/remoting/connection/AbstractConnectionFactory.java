@@ -206,16 +206,16 @@ public abstract class AbstractConnectionFactory implements ConnectionFactory {
         bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout);
         ChannelFuture future = bootstrap.connect(new InetSocketAddress(targetIP, targetPort));
 
-        /*
+        /**
+       notes
         1. 这个什么作用？
         > 等待future 完成，不可打断. 这个是阻塞的
-
-        2. todo 为什么在客户端创建到服务端的连接时，需要阻塞型呢？
-        >
-
-
+        /
+        2. 为什么在客户端创建到服务端的连接时，需要阻塞型呢？
+        > {@link DefaultConnectionManager#doCreate(Url, ConnectionPool, String, int)} 因为设计者希望在这个地方（最上层）统一指定同步/异步
+        /
         资料see https://www.cnblogs.com/sorheart/p/3195099.html
-
+        /
         源码 io.netty.util.concurrent.DefaultPromise.awaitUninterruptibly()
         ```java
         if (this.isDone()) {
@@ -226,7 +226,7 @@ public abstract class AbstractConnectionFactory implements ConnectionFactory {
             synchronized(this) {
                 while(!this.isDone()) {
                     this.incWaiters();
-
+                    //
                     try {
                         this.wait();
                     } catch (InterruptedException var9) {
@@ -236,11 +236,11 @@ public abstract class AbstractConnectionFactory implements ConnectionFactory {
                     }
                 }
             }
-
+            //
             if (interrupted) {
                 Thread.currentThread().interrupt();
             }
-
+            //
             return this;
         }
         ```
