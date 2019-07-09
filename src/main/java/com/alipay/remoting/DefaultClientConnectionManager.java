@@ -21,6 +21,8 @@ import com.alipay.remoting.connection.ConnectionFactory;
 
 /**
  * Do some preparatory work in order to refactor the ConnectionManager in the next version.
+ * notes 这个类，实际上没有逻辑。就是包装了一下 DefaultConnectionManager
+ * 具体还是取查看 {@link DefaultConnectionManager} 吧
  *
  * @author chengyi (mark.lx@antfin.com) 2019-03-07 14:27
  */

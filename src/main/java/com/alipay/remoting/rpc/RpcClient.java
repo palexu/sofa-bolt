@@ -41,6 +41,11 @@ public class RpcClient extends AbstractBoltClient {
                                                                          .getLogger("RpcRemoting");
 
     private final RpcTaskScanner                              taskScanner;
+    /**
+     * notes RpcClient不是客户端么？为什么也需要UserProcessor来处理请求？
+     *  RpcServer 可以主动向 RpcClient 发起请求，所以RpcClient也需要创建{@link UserProcessor}来处理这些请求
+     *  通过{@link #registerUserProcessor}向RpcClient注册
+     */
     private final ConcurrentHashMap<String, UserProcessor<?>> userProcessors;
     private final ConnectionEventHandler                      connectionEventHandler;
     private final ConnectionEventListener                     connectionEventListener;
@@ -105,22 +110,23 @@ public class RpcClient extends AbstractBoltClient {
             connectionSelectStrategy = new RandomSelectStrategy(switches());
         }
 
-        /*
-       notes
-        此时， userProcessors 应当已经配置好了用户的处理器。
+        /**
+         * 第一步
+       notes 配置并启动 DefaultClientConnectionManager
+        此时， {@link #userProcessors} 应当已经配置好了用户的处理器。
         当然没有配置也没关系，后面也可以注册进去。因为提供了 register方法
         一共有以下handler:
-        需要进行配置才可以使用的：
-        1.RpcHandler 内部包装了所有的userProcessors
-            为什么要怎么做呢？可以参考 see ['Netty 入门与实战：仿写微信 IM 即时通讯系统'里的骚操作]https://www.jianshu.com/p/bb0805d65388
-            > 缩短事件传播路径—— 放 Map 里，在第一个 handler 里根据指令来找具体 handler。
-            > RpcHandler就是利用 UserProcessor 感兴趣的时间作为map的key， 来缩短事件传播路径。
-        2.connectionEventHandler
-        无需配置即可使用的
-        1.编解码器handler
-        2.heartbeatHandler
+        1. 需要进行配置才可以使用的：
+            1) {@link RpcHandler} 内部包装了所有的userProcessors,所有用户自定义的消息处理逻辑都在这里注册和触发.
+                为什么要怎么做呢？可以参考 see ['Netty 入门与实战：仿写微信 IM 即时通讯系统'里的骚操作]https://www.jianshu.com/p/bb0805d65388
+                > 缩短事件传播路径—— 放 Map 里，在第一个 handler 里根据指令来找具体 handler。
+                > RpcHandler就是利用 UserProcessor 感兴趣的时间作为map的key， 来缩短事件传播路径。
+            2) {@link ConnectionEventHandler} 处理所有sofa-bolt源代码里定义的一些事件，用户不需要关心这个handler。
+        2. 无需配置即可使用的
+            1) 编解码器handler
+            2) heartbeatHandler
         =================
-        see com.alipay.remoting.connection.AbstractConnectionFactory.init
+        see {@link com.alipay.remoting.connection.AbstractConnectionFactory#init}
         ```
         bootstrap.handler(new ChannelInitializer<SocketChannel>() {
             @Override
@@ -141,6 +147,7 @@ public class RpcClient extends AbstractBoltClient {
                 pipeline.addLast("handler", handler);
             }
         });
+         todo 所以 {@link DefaultClientConnectionManager} 有什么功能呢？
         ```
          */
         this.connectionManager = new DefaultClientConnectionManager(connectionSelectStrategy,
@@ -149,7 +156,13 @@ public class RpcClient extends AbstractBoltClient {
         this.connectionManager.setAddressParser(this.addressParser);
         this.connectionManager.startup();
 
+        /**
+         * 第二步
+         * notes 创建真正的请求执行客户端（发起调用类）
+         */
         this.rpcRemoting = new RpcClientRemoting(new RpcCommandFactory(), this.addressParser, this.connectionManager);
+
+
         this.taskScanner.add(this.connectionManager);
         this.taskScanner.startup();
 
@@ -172,6 +185,13 @@ public class RpcClient extends AbstractBoltClient {
             logger.warn("Switch on reconnect manager");
         }
     }
+
+    /**
+     * ==================================================start RpcRemoting =============================================
+     * 下面的一大块代码都是对 {@link #rpcRemoting} 的方法的调用
+     *
+     */
+
 
     @Override
     public void oneway(final String address, final Object request) throws RemotingException,
@@ -349,6 +369,10 @@ public class RpcClient extends AbstractBoltClient {
         this.rpcRemoting.invokeWithCallback(conn, request, invokeContext, invokeCallback,
             timeoutMillis);
     }
+
+    /*
+     * ================================================== end RpcRemoting =============================================
+     */
 
     @Override
     public void addConnectionEventProcessor(ConnectionEventType type,

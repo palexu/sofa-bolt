@@ -29,6 +29,8 @@ import com.alipay.remoting.util.RemotingUtil;
 
 /**
  * Rpc client remoting
+ *
+ * notes 真正的请求执行客户端（发起调用类）
  * 
  * @author xiaomin.cxm
  * @version $Id: RpcClientRemoting.java, v 0.1 Apr 14, 2016 11:58:56 AM xiaomin.cxm Exp $

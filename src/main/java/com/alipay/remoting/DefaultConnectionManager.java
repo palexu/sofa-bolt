@@ -16,35 +16,23 @@
  */
 package com.alipay.remoting;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
-import com.alipay.remoting.constant.Constants;
-import com.alipay.remoting.log.BoltLoggerFactory;
-import org.slf4j.Logger;
-
 import com.alipay.remoting.config.ConfigManager;
 import com.alipay.remoting.config.switches.GlobalSwitch;
 import com.alipay.remoting.connection.ConnectionFactory;
+import com.alipay.remoting.constant.Constants;
 import com.alipay.remoting.exception.RemotingException;
+import com.alipay.remoting.log.BoltLoggerFactory;
 import com.alipay.remoting.util.FutureTaskUtil;
 import com.alipay.remoting.util.RunStateRecordedFutureTask;
 import com.alipay.remoting.util.StringUtils;
+import org.slf4j.Logger;
+
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * Abstract implementation of connection manager
+ * notes channel管理器
  *
  * @author xiaomin.cxm
  * @version $Id: DefaultConnectionManager.java, v 0.1 Mar 8, 2016 10:43:51 AM xiaomin.cxm Exp $
@@ -58,6 +46,7 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
 
     /**
      * executor to create connections in async way
+     * notes 用于异步创建连接
      */
     private ThreadPoolExecutor                                                      asyncCreateConnectionExecutor;
 
@@ -68,11 +57,13 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
 
     /**
      * connection pool initialize tasks
+     * todo 干啥的
      */
     protected ConcurrentHashMap<String, RunStateRecordedFutureTask<ConnectionPool>> connTasks;
 
     /**
      * heal connection tasks
+     * todo 啥 heal
      */
     protected ConcurrentHashMap<String, FutureTask<Integer>>                        healTasks;
 

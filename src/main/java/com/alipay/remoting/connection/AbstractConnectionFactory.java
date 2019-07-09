@@ -121,7 +121,7 @@ public abstract class AbstractConnectionFactory implements ConnectionFactory {
         Channel channel = doCreateConnection(url.getIp(), url.getPort(), url.getConnectTimeout());
         Connection conn = new Connection(channel, ProtocolCode.fromBytes(url.getProtocol()),
             url.getVersion(), url);
-        /*
+        /**
         notes  这是什么操作 channel.pipeline().fireUserEventTriggered(ConnectionEventType.CONNECT)
             其实就是个观察者模式，发布一个用户消息后， netty就会调用对应的channelHandler里的方法
             ======see doc===========
@@ -134,6 +134,7 @@ public abstract class AbstractConnectionFactory implements ConnectionFactory {
             channelRead(…)	        有数据可以读取的时候触发
             [重点] userEventTriggered(…)
                 当用户调用Channel.fireUserEventTriggered方法的时候，userEventTriggered就会被触发。用户可以传递一个自定义的对象当这个方法里
+            {@link com.alipay.remoting.ConnectionEventHandler#userEventTriggered(io.netty.channel.ChannelHandlerContext, java.lang.Object)}
 
          */
         channel.pipeline().fireUserEventTriggered(ConnectionEventType.CONNECT);

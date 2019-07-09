@@ -22,14 +22,11 @@ import com.alipay.remoting.Url;
 
 /**
  * Factory that creates connections.
- * 
+ * notes
+ *     see https://www.jianshu.com/p/0b069f9658ac
+ *     SOFABolt 源码分析12 - Connection 连接管理设计
  * @author jiangping
  * @version $Id: ConnectionFactory.java, v 0.1 2015-9-21 PM7:47:46 tao Exp $
- */
-/*
-notes
-    see https://www.jianshu.com/p/0b069f9658ac
-    SOFABolt 源码分析12 - Connection 连接管理设计
  */
 public interface ConnectionFactory {
 

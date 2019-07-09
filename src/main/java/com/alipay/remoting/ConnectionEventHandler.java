@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
  * Log the channel status event.
  * notes
  *  Connection 事件处理器:
+ *  在{@link com.alipay.remoting.rpc.RpcClient#startup()}中被注册到netty的pipline中
  *  ## 处理两类事件:
  *  1. Netty 定义的事件：
  *      例如 connect，channelActive 等
@@ -50,7 +51,6 @@ import java.util.concurrent.TimeUnit;
  *  ## 从功能上说：
  *  1. 触发 ConnectionEventListener
  *  2. 负责触发重连
- *
  *  @see [SOFABolt 源码分析13 - Connection 事件处理机制的设计](https://www.jianshu.com/p/d17b60418c54)
  *
  * @author jiangping
@@ -61,10 +61,14 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
     private static final Logger     logger = BoltLoggerFactory.getLogger("ConnectionEvent");
     /**
      * notes 这个家伙维护在这个ChannelHandler里似乎没什么用, 就是单纯的维护了一个指针
-     *  倒是 {@link com.alipay.remoting.rpc.RpcConnectionEventHandler}（ConnectionEventHandler的子类）里需要用到manger去加入和删除连接
+     *  倒是 {@link com.alipay.remoting.rpc.RpcConnectionEventHandler}（ConnectionEventHandler的子类）里需要用到manager去加入和删除连接
+     *  所以我觉得这个私有成员变量其实可以下放到 RpcConnectionEventHandler 里
      */
     private ConnectionManager       connectionManager;
 
+    /**
+     * notes SOFABolt 定义的事件，最终在这里被处理
+     */
     private ConnectionEventListener eventListener;
 
     /**
@@ -167,9 +171,6 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
                     reconnectManager.reconnect(conn.getUrl());
                 }
             }
-             /*
-                        todo 这是干啥的？
-                         */
             // trigger close connection event
             onEvent((Connection) attr.get(), remoteAddress, ConnectionEventType.CLOSE);
         }
@@ -184,7 +185,8 @@ public class ConnectionEventHandler extends ChannelDuplexHandler {
                     if (null != channel) {
                         Connection connection = channel.attr(Connection.CONNECTION).get();
                         /*
-                        todo 这是干啥的？
+                        notes 这是干啥的？
+                            > 处理bolt中定义的事件
                          */
                         this.onEvent(connection, connection.getUrl().getOriginUrl(), ConnectionEventType.CONNECT);
                     } else {
