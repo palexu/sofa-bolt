@@ -147,7 +147,10 @@ public class RpcClient extends AbstractBoltClient {
                 pipeline.addLast("handler", handler);
             }
         });
-         todo 所以 {@link DefaultClientConnectionManager} 有什么功能呢？
+
+         todo 所以 {@link DefaultConnectionManager} 有什么功能呢？
+          1. 提供同步、异步、单向调用等方式 （这里其实是代理了 RpcRemoting 的方法)
+          2. 调用时会按需创建对应channel并管理起来（提供同步创建、异步创建、混合创建, 这里其实是按一定规则去调用 ConnectionFactory）
         ```
          */
         this.connectionManager = new DefaultClientConnectionManager(connectionSelectStrategy,
