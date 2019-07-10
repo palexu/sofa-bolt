@@ -148,9 +148,10 @@ public class RpcClient extends AbstractBoltClient {
             }
         });
 
-         todo 所以 {@link DefaultConnectionManager} 有什么功能呢？
+         todo 所以 {@link RpcClient} 有什么功能呢？
           1. 提供同步、异步、单向调用等方式 （这里其实是代理了 RpcRemoting 的方法)
-          2. 调用时会按需创建对应channel并管理起来（提供同步创建、异步创建、混合创建, 这里其实是按一定规则去调用 ConnectionFactory）
+          2. 提供一些创建连接的功能 （这里其实是代理了 DefaultConnectionManager 的方法）
+          2. 调用时会按需创建对应channel并管理起来（提供同步创建、异步创建、混合创建, 这里其实是通过 DefaultConnectionManager 按一定规则去调用 ConnectionFactory 来创建）
         ```
          */
         this.connectionManager = new DefaultClientConnectionManager(connectionSelectStrategy,
@@ -377,6 +378,9 @@ public class RpcClient extends AbstractBoltClient {
      * ================================================== end RpcRemoting =============================================
      */
 
+
+    //=============================================== start 往handler上挂载bolt自定义的处理器 =============================
+
     @Override
     public void addConnectionEventProcessor(ConnectionEventType type,
                                             ConnectionEventProcessor processor) {
@@ -387,6 +391,12 @@ public class RpcClient extends AbstractBoltClient {
     public void registerUserProcessor(UserProcessor<?> processor) {
         UserProcessorRegisterHelper.registerUserProcessor(processor, this.userProcessors);
     }
+
+    //=============================================== end 往handler上挂载bolt自定义的处理器 =============================
+
+
+
+    //========================================== start 代理 connectionManager 的方法, 对连接进行管理  ============================
 
     @Override
     public Connection createStandaloneConnection(String ip, int port, int connectTimeout)
@@ -460,6 +470,11 @@ public class RpcClient extends AbstractBoltClient {
         this.connectionManager.remove(url.getUniqueKey());
     }
 
+    //================================================= end 代理 connectionManager 的方法  ============================
+
+    //========================================== start 一些开关的控制(心跳、连接重连器、连接监视器） ====================================================
+
+    //============================ 1。 心跳 =======================
     @Override
     public void enableConnHeartbeat(String address) {
         Url url = this.addressParser.parse(address);
@@ -486,6 +501,8 @@ public class RpcClient extends AbstractBoltClient {
         }
     }
 
+    //============================ 2。 连接重连器 =======================
+
     @Override
     public void enableReconnectSwitch() {
         this.switches().turnOn(GlobalSwitch.CONN_RECONNECT_SWITCH);
@@ -501,6 +518,8 @@ public class RpcClient extends AbstractBoltClient {
         return this.switches().isOn(GlobalSwitch.CONN_RECONNECT_SWITCH);
     }
 
+    //============================ 3。 连接监视器 =======================
+
     @Override
     public void enableConnectionMonitorSwitch() {
         this.switches().turnOn(GlobalSwitch.CONN_MONITOR_SWITCH);
@@ -515,6 +534,8 @@ public class RpcClient extends AbstractBoltClient {
     public boolean isConnectionMonitorSwitchOn() {
         return this.switches().isOn(GlobalSwitch.CONN_MONITOR_SWITCH);
     }
+
+    //========================================== end 一些开关的控制 ====================================================
 
     @Override
     public DefaultConnectionManager getConnectionManager() {
