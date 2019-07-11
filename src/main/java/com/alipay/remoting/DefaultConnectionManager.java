@@ -70,14 +70,22 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
     private GlobalSwitch                                                            globalSwitch;
 
     /**
+     *notes
      * connection pool initialize tasks
-     * todo RunStateRecordedFutureTask 干啥的
+     * key： url+port+协议等等， 唯一标志一个资源
+     * value：资源对应的连接池(因为可能是异步创建， 因此通过 Future来访问）
+     * 唯一的一个put操作： {@link #getConnectionPoolAndCreateIfAbsent}
+     * 其他方法里的调用， 均属于get或remove或isEmpty等
      */
     protected ConcurrentHashMap<String, RunStateRecordedFutureTask<ConnectionPool>> connTasks;
 
     /**
+     *notes
      * heal connection tasks
-     * todo 啥 heal
+     * {@link #createConnectionAndHealIfNeed} 在向{@link #connTasks}里put时，如果有需要， 可以指定进行heal操作
+     * heal -> 把连接池补满
+     *  // only when async creating connections done
+     *  // and the actual size of connections less than expected, the healing task can be run.
      */
     protected ConcurrentHashMap<String, FutureTask<Integer>>                        healTasks;
 

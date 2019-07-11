@@ -16,13 +16,12 @@
  */
 package com.alipay.remoting;
 
+import com.alipay.remoting.log.BoltLoggerFactory;
+import org.slf4j.Logger;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-import org.slf4j.Logger;
-
-import com.alipay.remoting.log.BoltLoggerFactory;
 
 /**
  * Connection pool
@@ -189,6 +188,9 @@ public class ConnectionPool implements Scannable {
         asyncCreationDone = false;
     }
 
+    /**
+     * notes 检查pool里所有连接，如果已断开，就关闭并回收资源
+     */
     @Override
     public void scan() {
         if (null != connections && !connections.isEmpty()) {

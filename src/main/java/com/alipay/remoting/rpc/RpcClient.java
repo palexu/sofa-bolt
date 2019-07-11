@@ -40,6 +40,10 @@ public class RpcClient extends AbstractBoltClient {
     private static final Logger                               logger = BoltLoggerFactory
                                                                          .getLogger("RpcRemoting");
 
+    /**
+     *notes
+     * 目前的功能是定期扫描所有ConnectionPool里的所有连接， 关闭那些已经expire且断开的连接
+     */
     private final RpcTaskScanner                              taskScanner;
     /**
      * notes RpcClient不是客户端么？为什么也需要UserProcessor来处理请求？
@@ -151,7 +155,7 @@ public class RpcClient extends AbstractBoltClient {
          todo 所以 {@link RpcClient} 有什么功能呢？
           1. 提供同步、异步、单向调用等方式 （这里其实是代理了 RpcRemoting 的方法)
           2. 提供一些创建连接的功能 （这里其实是代理了 DefaultConnectionManager 的方法）
-          2. 调用时会按需创建对应channel并管理起来（提供同步创建、异步创建、混合创建, 这里其实是通过 DefaultConnectionManager 按一定规则去调用 ConnectionFactory 来创建）
+          3. 调用时会按需创建对应channel并管理起来（提供同步创建、异步创建、混合创建, 这里其实是通过 DefaultConnectionManager 按一定规则去调用 ConnectionFactory 来创建）
         ```
          */
         this.connectionManager = new DefaultClientConnectionManager(connectionSelectStrategy,
@@ -166,21 +170,29 @@ public class RpcClient extends AbstractBoltClient {
          */
         this.rpcRemoting = new RpcClientRemoting(new RpcCommandFactory(), this.addressParser, this.connectionManager);
 
-
+        /**
+         * 第三步
+         * 开启定时任务，扫描已关闭的线程
+         * todo https://github.com/sofastack/sofa-bolt/issues/150
+         */
         this.taskScanner.add(this.connectionManager);
         this.taskScanner.startup();
 
+        /**
+         * 第四步
+         * 启动监听器
+         *
+         */
         if (switches().isOn(GlobalSwitch.CONN_MONITOR_SWITCH)) {
-            if (monitorStrategy == null) {
-                connectionMonitor = new DefaultConnectionMonitor(new ScheduledDisconnectStrategy(),
-                    this.connectionManager);
-            } else {
-                connectionMonitor = new DefaultConnectionMonitor(monitorStrategy,
-                    this.connectionManager);
-            }
+            connectionMonitor = new DefaultConnectionMonitor(monitorStrategy == null ? new ScheduledDisconnectStrategy() : monitorStrategy, this.connectionManager);
             connectionMonitor.startup();
             logger.warn("Switch on connection monitor");
         }
+
+        /**
+         * 第五步
+         * 启动重连器
+         */
         if (switches().isOn(GlobalSwitch.CONN_RECONNECT_SWITCH)) {
             reconnectManager = new ReconnectManager(connectionManager);
             reconnectManager.startup();
