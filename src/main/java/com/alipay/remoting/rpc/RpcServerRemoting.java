@@ -29,6 +29,11 @@ import com.alipay.remoting.util.RemotingUtil;
 
 /**
  * Rpc server remoting
+ *
+ * notes 与{@link RpcClientRemoting}的区别：
+ *  最大的区别就是{@link Connection}的获取,
+ *  client: 不一定连着server， 就算连着也可能断了， 所以没连上时要去创建连接
+ *  server: 大多数情况是client发请求， server响应，连接一般都创建好了
  * 
  * @author xiaomin.cxm
  * @version $Id: RpcServerRemoting.java, v 0.1 Apr 14, 2016 12:00:39 PM xiaomin.cxm Exp $

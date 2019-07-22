@@ -16,21 +16,21 @@
  */
 package com.alipay.remoting;
 
-import java.util.concurrent.TimeUnit;
-
-import org.slf4j.Logger;
-
 import com.alipay.remoting.exception.RemotingException;
 import com.alipay.remoting.log.BoltLoggerFactory;
 import com.alipay.remoting.util.RemotingUtil;
-
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.util.Timeout;
 import io.netty.util.TimerTask;
+import org.slf4j.Logger;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Base remoting capability.
+ * notes
+ *  各种异步转同步、回调的处理逻辑都在这个类实现
  * 
  * @author jiangping
  * @version $Id: BaseRemoting.java, v 0.1 Mar 4, 2016 12:09:56 AM tao Exp $
